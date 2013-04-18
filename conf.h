@@ -19,6 +19,7 @@
  * More parameters may be added later.
  */
 struct config {
+    int lightswitch_frame_drop;
     unsigned int log_level;
     char *log_type_str;
     char *log_file;
@@ -58,7 +59,7 @@ struct config {
     int pre_capture;
     int post_capture;
     int switchfilter;
-    int ffmpeg_output;
+    int ffmpeg_output_movies;
     int ffmpeg_output_debug;
     int ffmpeg_bps;
     int ffmpeg_vbr;
@@ -114,6 +115,7 @@ struct config {
     char *on_picture_save;
     char *on_area_detected;
     char *on_motion_detected;
+    char *on_event_microlightswitch;
     char *on_movie_start;
     char *on_movie_end;
     char *on_camera_lost;

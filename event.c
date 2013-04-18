@@ -233,6 +233,16 @@ static void on_event_start_command(struct context *cnt, int type ATTRIBUTE_UNUSE
         exec_command(cnt, cnt->conf.on_event_start, NULL, 0);
 }
 
+static void on_event_microlightswitch_detected(struct context *cnt, int type ATTRIBUTE_UNUSED,
+            unsigned char *dummy1 ATTRIBUTE_UNUSED,
+            char *dummy2 ATTRIBUTE_UNUSED, void *dummy3 ATTRIBUTE_UNUSED,
+            struct tm *tm ATTRIBUTE_UNUSED)
+{
+    if (cnt->conf.on_event_microlightswitch)
+        exec_command(cnt, cnt->conf.on_event_microlightswitch, NULL, 0);
+}
+
+
 static void on_event_end_command(struct context *cnt, int type ATTRIBUTE_UNUSED,
             unsigned char *dummy1 ATTRIBUTE_UNUSED,
             char *dummy2 ATTRIBUTE_UNUSED, void *dummy3 ATTRIBUTE_UNUSED,
@@ -547,7 +557,7 @@ static void event_ffmpeg_newfile(struct context *cnt, int type ATTRIBUTE_UNUSED,
     char stamp[PATH_MAX];
     const char *moviepath;
 
-    if (!cnt->conf.ffmpeg_output && !cnt->conf.ffmpeg_output_debug)
+    if (!cnt->conf.ffmpeg_output_movies && !cnt->conf.ffmpeg_output_debug)
         return;
 
     /*
@@ -568,7 +578,7 @@ static void event_ffmpeg_newfile(struct context *cnt, int type ATTRIBUTE_UNUSED,
     snprintf(cnt->motionfilename, PATH_MAX - 4, "%s/%sm", cnt->conf.filepath, stamp);
     snprintf(cnt->newfilename, PATH_MAX - 4, "%s/%s", cnt->conf.filepath, stamp);
 
-    if (cnt->conf.ffmpeg_output) {
+    if (cnt->conf.ffmpeg_output_movies) {
         if (cnt->imgs.type == VIDEO_PALETTE_GREY) {
             convbuf = mymalloc((width * height) / 2);
             y = img;
@@ -806,6 +816,10 @@ struct event_handlers event_handlers[] = {
     {
     EVENT_AREA_DETECTED,
     on_area_command
+    },
+    {
+    EVENT_MICROLIGHTSWITCH_DETECTED,
+    on_event_microlightswitch_detected
     },
     {
     EVENT_FIRSTMOTION,

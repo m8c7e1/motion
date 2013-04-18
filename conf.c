@@ -76,7 +76,7 @@ struct config conf_template = {
     pre_capture:                    0,
     post_capture:                   0,
     switchfilter:                   0,
-    ffmpeg_output:                  0,
+    ffmpeg_output_movies:           0,
     extpipe:                        NULL,
     useextpipe:                     0,
     ffmpeg_output_debug:            0,
@@ -135,6 +135,7 @@ struct config conf_template = {
 #endif
 #endif /* defined(HAVE_MYSQL) || defined(HAVE_PGSQL) || define(HAVE_SQLITE3) */
     on_picture_save:                NULL,
+    on_event_microlightswitch:      NULL,
     on_motion_detected:             NULL,
     on_area_detected:               NULL,
     on_movie_start:                 NULL,
@@ -159,6 +160,7 @@ struct config conf_template = {
     log_file:                       NULL,
     log_level:                      LEVEL_DEFAULT+10,
     log_type_str:                   NULL,
+    lightswitch_frame_drop:	    0,
 };
 
 
@@ -198,6 +200,14 @@ config_param config_params[] = {
     CONF_OFFSET(pid_file),
     copy_string,
     print_string
+    },
+    {
+    "lightswitch_frame_drop",
+    "#Number of frame to drop after a lightswitch event",
+    1,
+    CONF_OFFSET(lightswitch_frame_drop),
+    copy_int,
+    print_int,
     },
     {
     "setup_mode",
@@ -686,7 +696,7 @@ config_param config_params[] = {
     "############################################################\n\n"
     "# Use ffmpeg to encode movies in realtime (default: off)",
     0,
-    CONF_OFFSET(ffmpeg_output),
+    CONF_OFFSET(ffmpeg_output_movies),
     copy_bool,
     print_bool
     },
@@ -1336,6 +1346,14 @@ config_param config_params[] = {
     "# Check option 'area_detect'. (default: none)",
     0,
     CONF_OFFSET(on_area_detected),
+    copy_string,
+    print_string
+    },
+    {
+    "on_event_microlightswitch",
+    "# Command to be executed when a micro-ligth switch event is detected (default:none)",
+    0,
+    CONF_OFFSET(on_event_microlightswitch),
     copy_string,
     print_string
     },

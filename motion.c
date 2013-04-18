@@ -475,6 +475,8 @@ static void motion_detected(struct context *cnt, int dev, struct image_data *img
 
         /* EVENT_MOTION triggers event_beep and on_motion_detected_command */
         event(cnt, EVENT_MOTION, NULL, NULL, NULL, &img->timestamp_tm);
+        MOTION_LOG(NTC, TYPE_ALL, NO_ERRNO, "%s: Motion detected - motion %d",
+                       cnt->event_nr);
     }
 
     /* Limit framerate */
@@ -1101,6 +1103,8 @@ static void *motion_loop(void *arg)
     int minimum_frame_time_downcounter = cnt->conf.minimum_frame_time; /* time in seconds to skip between capturing images */
     unsigned int get_image = 1;    /* Flag used to signal that we capture new image when we run the loop */
     struct image_data *old_image;
+    unsigned long long int framecount =0;
+    int gotlightswitch=0;
 
     /* 
      * Next two variables are used for snapshot and timelapse feature
@@ -1251,6 +1255,7 @@ static void *motion_loop(void *arg)
 
         /* Increase the shots variable for each frame captured within this second */
         cnt->shots++;
+        framecount++;
 
         if (cnt->startup_frames > 0)
             cnt->startup_frames--;
@@ -1568,6 +1573,9 @@ static void *motion_loop(void *arg)
                     } else if (cnt->imgs.labelsize_max) {
                         cnt->imgs.labelsize_max = 0; /* Disable labeling if enabled */
                     }
+		    if (cnt->current_image->diffs > 0){
+                        MOTION_LOG(DBG,TYPE_EVENTS,NO_ERRNO, "%s: FrameCounter: %lld Diffs: %d Time:%lld", framecount,cnt->current_image->diffs,(long)time(NULL));
+		    }
 
                 } else if (!cnt->conf.setup_mode) {
                     cnt->current_image->diffs = 0;
@@ -1640,21 +1648,38 @@ static void *motion_loop(void *arg)
                  * at a constant level.                                                  
                  */
 
+                if (cnt->current_image->diffs > 0){
+		    MOTION_LOG(ALR,TYPE_ALL,NO_ERRNO, "%s: x=%d,y=%d,fcl=%d,fc=%lld",((abs(cnt->current_image->location.x - previous_location_x))),((abs(cnt->current_image->location.y - previous_location_y))),cnt->lightswitch_framecounter,framecount);}
+
                 if ((cnt->current_image->diffs > cnt->threshold) && (cnt->conf.lightswitch == 1) &&
                     (cnt->lightswitch_framecounter < (cnt->lastrate * 2)) && /* two seconds window only */
                     /* number of changed pixels almost the same in two consecutive frames and */
                     ((abs(previous_diffs - cnt->current_image->diffs)) < (previous_diffs / 15)) &&
                     /* center of motion in about the same place ? */
-                    ((abs(cnt->current_image->location.x - previous_location_x)) <= (cnt->imgs.width / 150)) &&
-                    ((abs(cnt->current_image->location.y - previous_location_y)) <= (cnt->imgs.height / 150))) {
+                    ((abs(cnt->current_image->location.x - previous_location_x)) <= (cnt->imgs.width / 150)) && /*was 150*/
+                    ((abs(cnt->current_image->location.y - previous_location_y)) <= (cnt->imgs.height / 120))) /*was 150*/{
                     alg_update_reference_frame(cnt, RESET_REF_FRAME);
                     cnt->current_image->diffs = 0;
                     cnt->lightswitch_framecounter = 0;
+		    gotlightswitch = cnt->conf.lightswitch_frame_drop;
+  
+                    event(cnt, EVENT_MICROLIGHTSWITCH_DETECTED, NULL, NULL, NULL, NULL);
+                    MOTION_LOG(DBG, TYPE_EVENTS, NO_ERRNO, "%s: micro-lightswitch! fc= %d",framecount);
+			
 
-                    MOTION_LOG(INF, TYPE_ALL, NO_ERRNO, "%s: micro-lightswitch!"); 
-                } else {
+                 }else if(gotlightswitch > 0){
+		     alg_update_reference_frame(cnt,RESET_REF_FRAME);
+		     gotlightswitch--;
+                     cnt->current_image->diffs = 0;
+                     cnt->lightswitch_framecounter = 0;
+		     MOTION_LOG(DBG,TYPE_ALL,NO_ERRNO, "%s: got-ligthswitch");
+		     if (gotlightswitch < 0){
+			gotlightswitch = 0;
+		     }
+
+		}else {
                     alg_update_reference_frame(cnt, UPDATE_REF_FRAME);
-                }
+		}
 
                 previous_diffs = cnt->current_image->diffs;
                 previous_location_x = cnt->current_image->location.x;
